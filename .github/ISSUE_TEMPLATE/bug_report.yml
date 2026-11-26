@@ -1,0 +1,24 @@
+name: Bug report
+description: Report a reproducible problem with Subversion for OpenIDEA.
+body:
+  - type: input
+    id: versions
+    attributes:
+      label: Versions and platform
+      description: Include the OpenIDEA and plugin versions, operating system and output of `svn --version --quiet`.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Describe the working-copy layout and the actions taken. A small test repository helps.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Expected and actual behavior
+      description: Include relevant SVN error codes and redact credentials, private URLs and project content.
+    validations:
+      required: true

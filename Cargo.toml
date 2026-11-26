@@ -1,0 +1,27 @@
+[package]
+name = "openidea-subversion"
+version = "0.1.14"
+edition = "2024"
+license = "Apache-2.0"
+description = "Subversion integration for OpenIDEA"
+readme = "README.md"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+encoding_rs = "0.8"
+openidea-plugin = { git = "https://github.com/l0ng-ai/openidea.git", rev = "30e72ffa574bec988ada3ce2818298d99dfe83ad" }
+roxmltree = "0.21"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = true
+opt-level = "s"
+strip = true

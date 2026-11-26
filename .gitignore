@@ -1,0 +1,13 @@
+/target/
+/dist/
+/release/
+/.local/
+/.idea/
+/.openidea/
+/.vscode/
+*.oiplugin
+*.key
+*.pem
+*.pfx
+.env
+.env.*

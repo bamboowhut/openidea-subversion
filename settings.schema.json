@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Choose the Subversion tool window and operation language. Follow IDE uses OpenIDEA's display language.",
+      "enum": ["Follow IDE", "English", "Simplified Chinese"],
+      "default": "Follow IDE"
+    }
+  }
+}

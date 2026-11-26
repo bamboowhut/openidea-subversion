@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          rustup default stable
+          rustup component add rustfmt
+          rustup target add wasm32-wasip2
+          sudo apt-get update
+          sudo apt-get install --yes subversion
+      - name: Check formatting and run tests
+        run: |
+          cargo fmt --check
+          cargo test --locked
+          for script in web/*.js; do node --check "$script"; done
+      - name: Install OpenIDEA plugin CLI
+        run: |
+          cli_asset="$RUNNER_TEMP/openidea-plugin-linux-x86_64.gz"
+          curl --fail --show-error --silent --location \
+            https://github.com/l0ng-ai/openidea/releases/download/v0.1.51/openidea-plugin-linux-x86_64.gz \
+            --output "$cli_asset"
+          echo "3f8854530c071c72cf1db77475c6907a6f3ceb5b1746832951854ab871f9c76a  $cli_asset" | sha256sum --check
+          gzip --decompress --stdout "$cli_asset" > "$RUNNER_TEMP/openidea-plugin"
+          chmod +x "$RUNNER_TEMP/openidea-plugin"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Build and validate package
+        run: |
+          cargo build --locked --release --target wasm32-wasip2
+          mkdir -p dist release
+          cp target/wasm32-wasip2/release/openidea_subversion.wasm dist/plugin.wasm
+          openidea-plugin check .
+          id=$(sed -n 's/^id = "\(.*\)"$/\1/p' plugin.toml)
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' plugin.toml)
+          package="release/$id-$version.oiplugin"
+          openidea-plugin pack . --out "$package"
+          openidea-plugin check "$package"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: subversion-plugin
+          path: release/*.oiplugin
+          if-no-files-found: error

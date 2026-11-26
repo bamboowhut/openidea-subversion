@@ -1,0 +1,15 @@
+name: Feature request
+description: Suggest an improvement to a Subversion workflow.
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Workflow
+      description: Describe what you are trying to do and where the current plugin gets in the way.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected behavior
+      description: Share an example or a reference to the equivalent action in another SVN client, if available.

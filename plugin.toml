@@ -1,0 +1,163 @@
+id = "bamboowhut.subversion"
+name = "Subversion"
+version = "0.1.14"
+description = "Browse Subversion repositories and manage working copies, commits, history, branches and conflicts in OpenIDEA."
+authors = ["BambooWhut"]
+license = "Apache-2.0"
+categories = ["vcs"]
+icon = "icon.svg"
+engines.openidea = "^1.15"
+wasm = "dist/plugin.wasm"
+activation = ["on-view:subversion", "on-command:*", "on-event:file-saved", "on-event:files-changed"]
+
+[capabilities]
+required = ["project.read", "project.write", "editor.read", "process:svn", "events", "storage"]
+optional = ["clipboard"]
+
+[contributes.settings]
+title = "Subversion"
+schema = "settings.schema.json"
+
+[[contributes.views]]
+id = "subversion"
+title = "Subversion"
+icon = "icon.svg"
+location = "bottom"
+header = "none"
+web = "web/panel.html"
+
+[[contributes.commands]]
+id = "open"
+title = "Subversion"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "refresh"
+title = "Refresh Changes"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "repositories"
+title = "Browse Subversion Repositories"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "update"
+title = "Update Project…"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "commit-project"
+title = "Commit Changes…"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "add"
+title = "Add to VCS"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "ignore"
+title = "Ignore…"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "commit"
+title = "Commit File…"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "update-file"
+title = "Update File…"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "properties"
+title = "Edit Properties"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "set-property"
+title = "Set Property…"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "revert"
+title = "Revert…"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "resolve"
+title = "Resolve Text Conflict…"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "cleanup"
+title = "Cleanup"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "current-revision"
+title = "Show Current Revision"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "diff"
+title = "Compare with Same Repository Version"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "compare-latest"
+title = "Compare with Latest Repository Version"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "compare-revision"
+title = "Compare with Revision…"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "history"
+title = "Show History"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "annotate"
+title = "Annotate"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "branch-tag"
+title = "Branch or Tag…"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "lock"
+title = "Lock…"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "unlock"
+title = "Unlock"
+category = "Subversion"
+
+[[contributes.commands]]
+id = "relocate"
+title = "Relocate…"
+category = "Subversion"
+
+[[contributes.menus]]
+menu = "tools"
+command = "open"
+
+[[contributes.menus]]
+menu = "tools"
+command = "repositories"
+
+[[contributes.menus]]
+menu = "tools"
+command = "update"
+
+[[contributes.menus]]
+menu = "tools"
+command = "commit-project"
