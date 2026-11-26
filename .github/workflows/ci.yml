@@ -40,12 +40,9 @@ jobs:
           cargo build --locked --release --target wasm32-wasip2
           mkdir -p dist release
           cp target/wasm32-wasip2/release/openidea_subversion.wasm dist/plugin.wasm
-          openidea-plugin check .
-          id=$(sed -n 's/^id = "\(.*\)"$/\1/p' plugin.toml)
-          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' plugin.toml)
-          package="release/$id-$version.oiplugin"
-          openidea-plugin pack . --out "$package"
-          openidea-plugin check "$package"
+          cd release
+          openidea-plugin pack ..
+          openidea-plugin check ./*.oiplugin
       - uses: actions/upload-artifact@v4
         with:
           name: subversion-plugin
