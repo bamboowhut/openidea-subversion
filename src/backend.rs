@@ -210,6 +210,11 @@ impl Session {
     }
 
     pub fn stream(&self, verb: &str, flags: &[String], targets: &[String]) -> Result<String> {
+        #[cfg(all(test, target_os = "linux"))]
+        if crate::tests::CAPTURE_SVN_STREAM.get() {
+            return self.read(verb, flags, targets);
+        }
+
         let task = host::begin_task(&format!("SVN {verb}"), true);
         let command = self.command(verb, flags, targets, false);
         self.check_argv(&command)?;

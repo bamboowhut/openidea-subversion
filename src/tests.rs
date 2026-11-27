@@ -383,6 +383,12 @@ fn fixture() -> (tempfile::TempDir, String) {
 
 const CASE_COMMIT_NOTE: &str = "Commit the selected spelling";
 
+#[cfg(target_os = "linux")]
+thread_local! {
+    // The pinned SDK mock dispatches registered processes only for captured runs.
+    pub(crate) static CAPTURE_SVN_STREAM: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 fn panel_commit(state: serde_json::Value, target: &str) -> serde_json::Value {
     let mut panel = Command::new("node")
         .args([concat!(
@@ -513,9 +519,10 @@ fn panel_commit_file_leaves_the_case_distinct_svn_sibling_uncommitted() {
     let target = abs(&project.join("Foo.txt"));
     let message = panel_commit(snapshot["snapshot"].clone(), &target);
     assert_eq!(message["op"], "commit");
-    plugin
-        .handle("subversion", ViewEvent::Message(message.to_string()), &ctx)
-        .unwrap();
+    CAPTURE_SVN_STREAM.set(true);
+    let committed = plugin.handle("subversion", ViewEvent::Message(message.to_string()), &ctx);
+    CAPTURE_SVN_STREAM.set(false);
+    committed.unwrap();
     let responses = mock.view_messages();
     let response: serde_json::Value = serde_json::from_str(&responses.last().unwrap().1).unwrap();
     assert_eq!(response["data"]["committed"], true, "{response}");
