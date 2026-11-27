@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.15
+
+- Fix **Commit File…** preselection and changelist lookup for files whose names differ only by case in a case-sensitive working copy.
+
 ## 0.1.14
 
 - Sync the tool window and open plugin forms when the display language changes, without waiting for an SVN refresh.

@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 
 use openidea_plugin::mock::MockHost;
 use openidea_plugin::{DocumentChanged, Error, Event, EventKind, Plugin, ProcessOutput, host};
@@ -379,6 +379,166 @@ fn fixture() -> (tempfile::TempDir, String) {
         ],
     );
     (root, base)
+}
+
+const CASE_COMMIT_NOTE: &str = "Commit the selected spelling";
+
+fn panel_commit(state: serde_json::Value, target: &str) -> serde_json::Value {
+    let mut panel = Command::new("node")
+        .args([concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/commit-panel.cjs"
+        )])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("The panel regression tests require Node.js");
+    serde_json::to_writer(
+        panel.stdin.take().unwrap(),
+        &json!({"state": state, "target": target, "note": CASE_COMMIT_NOTE}),
+    )
+    .unwrap();
+    let output = panel.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    serde_json::from_slice(&output.stdout).unwrap()
+}
+
+#[test]
+fn panel_commit_respects_changelists_directory_boundaries_and_windows_paths() {
+    let select = |scope: &str, changes: &[(&str, &str)], target: &str| {
+        let changes: Vec<_> = changes
+            .iter()
+            .map(|(path, group)| json!({"path": path, "item": "modified", "group": group}))
+            .collect();
+        panel_commit(
+            json!({"scope": scope, "project": scope, "changes": changes}),
+            target,
+        )
+    };
+    assert_eq!(
+        select(
+            "/work",
+            &[("/work/foo.txt", "Other"), ("/work/Foo.txt", "Selected")],
+            "/work/Foo.txt",
+        )["paths"],
+        json!(["/work/Foo.txt"])
+    );
+    assert_eq!(
+        select(
+            "/work",
+            &[
+                ("/work/src/a", "Changes"),
+                ("/work/Src/b", "Changes"),
+                ("/work/src-other/c", "Changes")
+            ],
+            "/work/src/",
+        )["paths"],
+        json!(["/work/src/a"])
+    );
+    assert_eq!(
+        select(
+            "C:/Work",
+            &[("C:/Work/Foo.txt", "Selected")],
+            r"c:\work\FOO.txt",
+        )["paths"],
+        json!(["C:/Work/Foo.txt"])
+    );
+    let ambiguous = [
+        ("//Host/Share/Foo.txt", "Changes"),
+        ("//Host/Share/foo.txt", "Changes"),
+    ];
+    assert_eq!(
+        select("//Host/Share", &ambiguous, r"\\Host\Share\Foo.txt")["paths"],
+        json!(["//Host/Share/Foo.txt"])
+    );
+    assert!(select("//Host/Share", &ambiguous, r"\\host\share\FOO.txt").is_null());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn panel_commit_file_leaves_the_case_distinct_svn_sibling_uncommitted() {
+    use openidea_plugin::views::{ViewEvent, Views};
+
+    let (dir, base) = fixture();
+    let project = dir.path().join("a/module");
+    for file in ["Foo.txt", "foo.txt"] {
+        write(&project.join(file), "original\n");
+    }
+    svn(&project, &["add", "--", "Foo.txt", "foo.txt"]);
+    svn(&project, &["commit", "-m", "case-distinct originals", "."]);
+    svn(
+        &project,
+        &["changelist", "Selected", "--", "Foo.txt", "foo.txt"],
+    );
+    write(&project.join("Foo.txt"), "selected change\n");
+    write(&project.join("foo.txt"), "unselected change\n");
+
+    let mock = MockHost::install().with_capabilities(&[
+        "process:svn",
+        "project.read",
+        "editor.read",
+        "storage",
+    ]);
+    mock.set_project_root(Some(&abs(&project)));
+    mock.add_file("Foo.txt", "selected change\n");
+    mock.add_file("foo.txt", "unselected change\n");
+    let cwd = project.clone();
+    let note = dir.path().join("commit-message.txt");
+    write(&note, CASE_COMMIT_NOTE);
+    let note = abs(&note);
+    mock.on_process("svn", move |args, _| {
+        let mut argv: Vec<_> = args.iter().map(String::as_str).collect();
+        if argv[0] == "commit" {
+            // The SDK mock stores its private scratch files in memory.
+            // Substitute only the note file when invoking the real SVN client.
+            let position = argv.iter().position(|flag| *flag == "--file").unwrap();
+            assert!(argv[position + 1].ends_with("/svn-input.txt"));
+            argv[position + 1] = &note;
+        }
+        let output = cli("svn", &cwd, &argv);
+        Ok(ProcessOutput {
+            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+            status: output.status.code(),
+        })
+    });
+    let ctx = mock.invocation();
+    let mut plugin = Subversion::default();
+    let snapshot = plugin.execute(&ctx, &crate::Request::default()).unwrap();
+    let target = abs(&project.join("Foo.txt"));
+    let message = panel_commit(snapshot["snapshot"].clone(), &target);
+    assert_eq!(message["op"], "commit");
+    plugin
+        .handle("subversion", ViewEvent::Message(message.to_string()), &ctx)
+        .unwrap();
+    let responses = mock.view_messages();
+    let response: serde_json::Value = serde_json::from_str(&responses.last().unwrap().1).unwrap();
+    assert_eq!(response["data"]["committed"], true, "{response}");
+    assert_eq!(
+        svn(
+            &project,
+            &["cat", "--", &format!("{base}/trunk/module/Foo.txt")]
+        ),
+        "selected change\n"
+    );
+    assert_eq!(
+        svn(
+            &project,
+            &["cat", "--", &format!("{base}/trunk/module/foo.txt")]
+        ),
+        "original\n"
+    );
+
+    let local = svn(&project, &["status", "--xml", "--", "Foo.txt", "foo.txt"]);
+    let changes = svn::status(&local, &abs(&project)).unwrap();
+    assert_eq!(changes.len(), 1);
+    assert_eq!(changes[0].path, abs(&project.join("foo.txt")));
+    assert_eq!(changes[0].item, "modified");
 }
 
 #[test]

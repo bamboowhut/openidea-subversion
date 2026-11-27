@@ -313,7 +313,7 @@ dependencies = [
 
 [[package]]
 name = "openidea-subversion"
-version = "0.1.14"
+version = "0.1.15"
 dependencies = [
  "encoding_rs",
  "openidea-plugin",

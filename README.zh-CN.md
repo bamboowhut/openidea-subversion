@@ -48,7 +48,7 @@
 
 ## 构建与测试
 
-需要 Rust stable、`wasm32-wasip2`、OpenIDEA v0.1.51 的插件 CLI，以及 `svn` 和 `svnadmin`。Windows 自动化测试包含中文路径，先将支持 Unicode 的客户端放在测试进程的 PATH 前面。官方提供 Linux x86-64 CLI，可在 Windows 的 WSL 内运行。 [OpenIDEA v0.1.51](https://github.com/l0ng-ai/openidea/releases/tag/v0.1.51)
+需要 Rust stable、`wasm32-wasip2`、OpenIDEA v0.1.51 的插件 CLI，以及用于测试的 `svn`、`svnadmin` 和 Node.js。Windows 自动化测试包含中文路径，先将支持 Unicode 的客户端放在测试进程的 PATH 前面。官方提供 Linux x86-64 CLI，可在 Windows 的 WSL 内运行。 [OpenIDEA v0.1.51](https://github.com/l0ng-ai/openidea/releases/tag/v0.1.51)
 
 ```sh
 rustup target add wasm32-wasip2
@@ -62,8 +62,8 @@ cargo build --locked --release --target wasm32-wasip2
 ```sh
 mkdir -p release
 openidea-plugin check .
-openidea-plugin pack . --out release/bamboowhut.subversion-0.1.14.oiplugin
-openidea-plugin check release/bamboowhut.subversion-0.1.14.oiplugin
+openidea-plugin pack . --out release/bamboowhut.subversion-0.1.15.oiplugin
+openidea-plugin check release/bamboowhut.subversion-0.1.15.oiplugin
 ```
 
 SDK 固定到 OpenIDEA v0.1.51 的提交 `30e72ffa574bec988ada3ce2818298d99dfe83ad`。人工验收步骤见 [验收清单](docs/manual-testing.zh-CN.md)，开发和发布流程见 [贡献指南](CONTRIBUTING.md)。

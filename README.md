@@ -46,7 +46,7 @@ SVN handles authentication with its own configuration and credential cache. **Au
 
 ## Build and test
 
-The build uses Rust stable with `wasm32-wasip2` and the SDK pinned to OpenIDEA v0.1.51. Install `svn` and `svnadmin` for tests, and use the `openidea-plugin` CLI from the [OpenIDEA v0.1.51 release](https://github.com/l0ng-ai/openidea/releases/tag/v0.1.51) to check and pack the plugin. The release provides a Linux x86-64 CLI. On Windows, the CLI can run in x86-64 WSL while Rust builds on Windows.
+The build uses Rust stable with `wasm32-wasip2` and the SDK pinned to OpenIDEA v0.1.51. Install `svn`, `svnadmin`, and Node.js for tests, and use the `openidea-plugin` CLI from the [OpenIDEA v0.1.51 release](https://github.com/l0ng-ai/openidea/releases/tag/v0.1.51) to check and pack the plugin. The release provides a Linux x86-64 CLI. On Windows, the CLI can run in x86-64 WSL while Rust builds on Windows.
 
 ```sh
 rustup target add wasm32-wasip2
@@ -60,8 +60,8 @@ Copy `target/wasm32-wasip2/release/openidea_subversion.wasm` to `dist/plugin.was
 ```sh
 mkdir -p release
 openidea-plugin check .
-openidea-plugin pack . --out release/bamboowhut.subversion-0.1.14.oiplugin
-openidea-plugin check release/bamboowhut.subversion-0.1.14.oiplugin
+openidea-plugin pack . --out release/bamboowhut.subversion-0.1.15.oiplugin
+openidea-plugin check release/bamboowhut.subversion-0.1.15.oiplugin
 ```
 
 See the [manual testing guide](docs/manual-testing.md) for IDE workflows and [CONTRIBUTING.md](CONTRIBUTING.md) for development and releases.

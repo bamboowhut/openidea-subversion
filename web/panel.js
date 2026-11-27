@@ -437,18 +437,34 @@ function updateCommit() {
   by("commit").disabled = selected.size === 0 || !state.scope || !by("note").value.trim() || ["commit", "shelve"].includes(request?.op);
 }
 
+function commitTargetPaths(paths) {
+  const windows = /^(?:[a-z]:\/|\/\/)/i.test(state.scope);
+  return paths.map(path => {
+    const target = (windows ? path.replaceAll("\\", "/") : path).replace(/\/$/, "");
+    if (!windows) return target;
+
+    // Resolve a Windows spelling to the SVN status path. An exact match wins,
+    // and an ambiguous case-insensitive match cannot select additional paths.
+    const depth = target.split("/").length;
+    const folded = target.toLowerCase();
+    const matches = new Set();
+    for (const change of state.changes) {
+      const prefix = change.path.split("/", depth).join("/");
+      if (prefix === target) return target;
+      if (prefix.toLowerCase() === folded) matches.add(prefix);
+    }
+    return matches.size === 1 ? matches.values().next().value : target;
+  });
+}
+
 function selectCommitGroup(paths = []) {
   selected.clear();
   const group = by("commitGroup").value;
-  const samePath = (change, path) => {
-    const a = change.path.replaceAll("\\", "/").toLowerCase();
-    const b = path.replaceAll("\\", "/").toLowerCase().replace(/\/$/, "");
-    return a === b || a.startsWith(b + "/");
-  };
+  const matchesTarget = change => paths.some(path => change.path === path || change.path.startsWith(path + "/"));
   const candidates = state.changes.filter(change => (changeDialogMode === "shelve" ? canShelve(change) : canCommit(change)) &&
     (change.item === "unversioned"
-      ? paths.some(path => samePath(change, path))
-      : (change.group || "Changes") === group && (!paths.length || paths.some(path => samePath(change, path)))));
+      ? matchesTarget(change)
+      : (change.group || "Changes") === group && (!paths.length || matchesTarget(change))));
   for (const change of candidates.slice(0, 200)) selected.add(change.path);
   redrawCommit();
   choose(candidates[0]?.path || "", true);
@@ -501,13 +517,13 @@ function openCommit(paths = [], mode = "commit") {
     option.value = group;
     return option;
   }));
-  const first = paths[0]?.replaceAll("\\", "/").toLowerCase();
-  const match = first && state.changes.find(change => change.path.toLowerCase() === first);
+  const targets = commitTargetPaths(paths);
+  const match = state.changes.find(change => change.path === targets[0]);
   const group = match?.group || (!match && activeShelfGroups.get(state.scope)) || "Changes";
   select.value = groups.has(group) ? group : "Changes";
   if (!shelve && !drafts.commit) by("note").value = shelfComments.get(state.scope + ":" + select.value) || "";
   showPanelDialog("commitDialog");
-  selectCommitGroup(paths);
+  selectCommitGroup(targets);
   by("note").focus();
   by("note").select();
 }
