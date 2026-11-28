@@ -1,7 +1,7 @@
 id = "bamboowhut.subversion"
 name = "Subversion"
-version = "0.1.15"
-description = "Browse Subversion repositories and manage working copies, commits, history, branches and conflicts in OpenIDEA."
+version = "1.0.0"
+description = "Browse Subversion (SVN) repositories and manage working copies, commits, history, branches and conflicts in OpenIDEA."
 authors = ["BambooWhut"]
 license = "Apache-2.0"
 categories = ["vcs"]

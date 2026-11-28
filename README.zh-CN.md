@@ -22,6 +22,8 @@
 
 工具窗口和已打开的插件表单会自动切换语言。OpenIDEA 原生菜单和查找操作使用 IDE 自己的显示语言。SVN 命令行输出保留客户端返回的原文。
 
+在同一设置页，**Tool window font size (px)** 调整工具窗和弹窗字号，**Diff preview font size (px)** 调整内嵌差异和冲突文本。输入 **0** 跟随 OpenIDEA，也可指定 **10–24 px**。在编辑器中打开的原生差异使用 OpenIDEA 的编辑器字号。
+
 ## 使用
 
 - 在 **Subversion › Local Changes** 中右键操作 SVN 变更。对当前工作范围内已打开的文件，可从 **查找操作** 运行 **Show History**、**Annotate** 等 Subversion 命令。
@@ -62,8 +64,8 @@ cargo build --locked --release --target wasm32-wasip2
 ```sh
 mkdir -p release
 openidea-plugin check .
-openidea-plugin pack . --out release/bamboowhut.subversion-0.1.15.oiplugin
-openidea-plugin check release/bamboowhut.subversion-0.1.15.oiplugin
+openidea-plugin pack . --out release/bamboowhut.subversion-1.0.0.oiplugin
+openidea-plugin check release/bamboowhut.subversion-1.0.0.oiplugin
 ```
 
 SDK 固定到 OpenIDEA v0.1.51 的提交 `30e72ffa574bec988ada3ce2818298d99dfe83ad`。人工验收步骤见 [验收清单](docs/manual-testing.zh-CN.md)，开发和发布流程见 [贡献指南](CONTRIBUTING.md)。

@@ -249,13 +249,19 @@ function drawUnshelve() {
     check.setAttribute("aria-label", relative(change.path));
     check.onchange = () => { if (check.checked) paths.add(change.path); else paths.delete(change.path); sync(); };
     line.prepend(check);
-    line.append(el("span", change.item[0].toUpperCase() + change.item.slice(1), "meta"));
+    line.append(el("span", t(labels[change.item] || change.item), "meta"));
     line.dataset.active = String(unshelveFile === change.path);
     line.onclick = () => {
       unshelveFile = change.path;
       for (const row of tree.querySelectorAll(".row")) row.dataset.active = String(row === line);
     };
     line.ondblclick = () => showShelfDiff("native", shelf, change.path);
+    line.onkeydown = event => {
+      if (event.target === line && event.key === "Enter") {
+        event.preventDefault();
+        showShelfDiff("native", shelf, change.path);
+      }
+    };
     return line;
   }, paths, sync, groupUnshelveFiles);
   sync();
@@ -317,7 +323,7 @@ function updateShelveToolbar() {
   by("shelveFileCount").textContent = index < 0 ? "" : files.length === 1 ? t("1 file") : `${index + 1}/${fileCount(files.length)}`;
   by("shelvePreviousDifference").disabled = !(view?.index > 0);
   by("shelveNextDifference").disabled = !(view?.index < count - 1);
-  by("shelveDifferenceCount").textContent = count === undefined ? "" : `${count} ${count === 1 ? t("difference") : t("differences")}`;
+  by("shelveDifferenceCount").textContent = count === undefined ? "" : differencePosition(view);
 }
 
 function initShelf() {
@@ -345,37 +351,35 @@ function initShelf() {
   }
   by("shelfUnified").onclick = () => layout(true);
   by("shelfSideBySide").onclick = () => layout(false);
-  function moveHunk(step) {
-    const view = previewViews.get("shelfPreview");
-    if (view?.hunks?.[view.index + step]) { view.index += step; drawPreview("shelfPreview"); }
-  }
-  by("shelfPreviousDifference").onclick = () => moveHunk(-1);
-  by("shelfNextDifference").onclick = () => moveHunk(1);
+  by("shelfPreviousDifference").onclick = () => moveDifference(-1, "shelfPreview");
+  by("shelfNextDifference").onclick = () => moveDifference(1, "shelfPreview");
   by("shelveExpand").onclick = () => toggleBranches("commitTree", true);
   by("shelveCollapse").onclick = () => toggleBranches("commitTree", false);
   function moveShelveFile(step) {
     const files = shelvePreviewFiles();
     const path = files[files.indexOf(commitPath) + step];
-    if (path) choose(path, true);
+    if (path) {
+      const row = [...by("commitTree").querySelectorAll(".row[data-path]")].find(item => item.dataset.path === path);
+      for (let branch = row.closest("details"); branch; branch = branch.parentElement.closest("details")) branch.open = true;
+      choose(path, true);
+      row.scrollIntoView({ block: "nearest" });
+    }
   }
   by("shelvePreviousFile").onclick = () => moveShelveFile(-1);
   by("shelveNextFile").onclick = () => moveShelveFile(1);
-  function moveShelveHunk(step) {
-    const view = previewViews.get("commitPreview");
-    if (view?.hunks?.[view.index + step]) { view.index += step; drawPreview("commitPreview"); }
-  }
-  by("shelvePreviousDifference").onclick = () => moveShelveHunk(-1);
-  by("shelveNextDifference").onclick = () => moveShelveHunk(1);
+  by("shelvePreviousDifference").onclick = () => moveDifference(-1, "commitPreview");
+  by("shelveNextDifference").onclick = () => moveDifference(1, "commitPreview");
   function switchShelveLayout(unified) {
-    shelveUnified = unified;
+    if (changeDialogMode === "shelve") shelveUnified = unified;
+    else commitUnified = unified;
     by("shelveSideBySide").setAttribute("aria-pressed", String(!unified));
     by("shelveUnified").setAttribute("aria-pressed", String(unified));
     const view = previewViews.get("commitPreview");
-    if (view) { view.data.unified = unified; drawPreview("commitPreview"); }
+    if (view) { view.data.unified = unified; drawPreview("commitPreview", true); }
   }
   by("shelveSideBySide").onclick = () => switchShelveLayout(false);
   by("shelveUnified").onclick = () => switchShelveLayout(true);
-  by("shelveDiffSettings").onclick = event => buttonMenu(event.currentTarget, diffOptionActions());
+  by("shelveDiffSettings").onclick = event => buttonMenu(event.currentTarget, diffOptionActions("commitPreview"));
   by("unshelveDiff").onclick = () => showShelfDiff("native", unshelveSelection.shelf, unshelveFile);
   by("unshelveExpand").onclick = () => toggleBranches("unshelveTree", true);
   by("unshelveCollapse").onclick = () => toggleBranches("unshelveTree", false);

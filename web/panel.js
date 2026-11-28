@@ -19,6 +19,7 @@ let dialogFocus;
 const previewTimers = new Map();
 let commitPath = "";
 let changeDialogMode = "commit";
+let commitUnified = false;
 const drafts = { commit: "", shelve: "" };
 const logs = Object.fromEntries(["repository", "incoming"].map(name => [name, { entries: [], next: null, root: "", loaded: false }]));
 let seq = 0;
@@ -79,8 +80,13 @@ function tab(name, requestData = true) {
   currentTab = name;
   document.querySelectorAll("main > section").forEach(section => { section.hidden = section.id !== name; });
   document.querySelectorAll("nav button[data-tab]").forEach(button => {
-    if (button.dataset.tab === name) button.hidden = false;
-    button.setAttribute("aria-selected", String(button.dataset.tab === name));
+    const active = button.dataset.tab === name;
+    if (active) {
+      button.hidden = false;
+      button.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    button.tabIndex = active ? 0 : -1;
+    button.setAttribute("aria-selected", String(active));
   });
   if (logs[name] && !logs[name].loaded && state.scope) loadLog(name);
   if (requestData && name === "shelf" && state.scope) send("shelves", {}, { quiet: true });
@@ -90,6 +96,7 @@ function status(text, error = false, visible = false) {
   by("status").textContent = text;
   by("status").classList.toggle("error", error);
   by("status").dataset.visible = String(visible);
+  delete by("status").dataset.running;
 }
 
 function appendOutput(value) {
@@ -108,7 +115,10 @@ function send(op, data = {}, meta = {}) {
   const serial = ++seq;
   request = { serial, op, data, ...meta };
   document.body.setAttribute("aria-busy", "true");
-  if (!meta.quiet && !meta.previewTo) status(t("Running SVN…"), false, true);
+  if (!meta.quiet && !meta.previewTo) {
+    status(t("Running SVN…"), false, true);
+    by("status").dataset.running = "true";
+  }
   const project = op === "refresh" ? "" : state.project || "";
   window.openidea.postMessage(JSON.stringify({ op, seq: serial, panel, project, encoding: by("encoding").value, ...data }));
 }
@@ -142,12 +152,14 @@ function updatePanelLanguage(msg) {
   if (by("shelfList").children.length) renderShelves(shelves, false);
   if (by("commitDialog").open) {
     localizeCommitControls();
+    updateCommit();
     const group = by("commitGroup").querySelector('option[value="Changes"]');
     if (group) group.textContent = t("Changes");
   }
   const group = by("unshelveGroups").querySelector('option[value="Changes"]');
   if (group) group.label = t("Changes");
   localizeForm();
+  updateDiffToolbar();
 }
 
 function badge(change) {
@@ -196,7 +208,8 @@ function queuePreview(path, id) {
 function localNavigation() {
   const all = [...by("changeList").querySelectorAll(".row[data-path]")];
   const group = all.find(row => row.dataset.path === active)?.closest("details[data-group]")?.dataset.group;
-  const visible = group ? all.filter(row => row.closest("details[data-group]")?.dataset.group === group) : [];
+  const visible = group ? all.filter(row => row.closest("details[data-group]")?.dataset.group === group &&
+    (row.dataset.directory !== "true" || row.dataset.path === active)) : [];
   const index = visible.findIndex(row => row.dataset.path === active);
   by("previousFile").disabled = index < 1;
   by("nextFile").disabled = index < 0 || index >= visible.length - 1;
@@ -215,8 +228,9 @@ function choose(path, commit = false) {
   } else {
     active = path;
     by("shelveSelected").disabled = !state.changes.some(change => change.path === path && canShelve(change));
-    by("revert").disabled = !path;
-    by("showDiff").disabled = !path;
+    const change = state.changes.find(change => change.path === path);
+    by("revert").disabled = !change || ["ignored", "unversioned", "external"].includes(change.item);
+    by("showDiff").disabled = !change || change.item === "external";
     localNavigation();
     if (!by("localPane").hidden) queuePreview(path, "localDiff");
   }
@@ -235,6 +249,7 @@ function row(change, name, commit) {
   line.tabIndex = 0;
   line.dataset.active = String(change.path === (commit ? commitPath : active));
   line.dataset.path = change.path;
+  line.dataset.directory = String(Boolean(change.directory));
   if (commit) {
     const check = el("input");
     check.type = "checkbox";
@@ -418,12 +433,21 @@ function redrawChanges() {
 }
 
 function redrawCommit() {
+  const tree = by("commitTree");
+  const scroll = tree.scrollTop;
+  const focus = document.activeElement;
+  const focusPath = tree.contains(focus) && (focus.dataset.commitPath || focus.dataset.path);
   const group = by("commitGroup").value;
   const changes = state.changes.filter(change => (change.item === "unversioned" || (change.group || "Changes") === group) &&
     (changeDialogMode === "shelve" ? canShelve(change) : change.item !== "ignored"));
   if (changeDialogMode === "shelve") {
     selectionTree(by("commitTree"), changes, change => row(change, relative(change.path).split("/").at(-1), true), selected, updateCommit);
   } else changeTree(by("commitTree"), changes, true);
+  tree.scrollTop = scroll;
+  if (focusPath) {
+    const selector = focus.matches("input") ? "input[data-commit-path]" : ".row[data-path]";
+    [...tree.querySelectorAll(selector)].find(node => (node.dataset.commitPath || node.dataset.path) === focusPath)?.focus({ preventScroll: true });
+  }
   updateCommit();
 }
 
@@ -434,6 +458,7 @@ function updateCommit() {
     for (const change of state.changes) if (selected.has(change.path)) counts.set(change.item, (counts.get(change.item) || 0) + 1);
     by("shelveCounts").textContent = [...counts].map(([type, count]) => count + " " + t(labels[type] || type)).join(t(", "));
   }
+  by("commitSelectionCount").textContent = t("Selected: ") + selected.size + "/200";
   by("commit").disabled = selected.size === 0 || !state.scope || !by("note").value.trim() || ["commit", "shelve"].includes(request?.op);
 }
 
@@ -467,11 +492,17 @@ function selectCommitGroup(paths = []) {
       : (change.group || "Changes") === group && (!paths.length || matchesTarget(change))));
   for (const change of candidates.slice(0, 200)) selected.add(change.path);
   redrawCommit();
-  choose(candidates[0]?.path || "", true);
+  const preview = candidates.find(change => change.path === active && !change.directory)
+    || candidates.find(change => !change.directory) || candidates[0];
+  choose(preview?.path || "", true);
+  if (preview) {
+    [...by("commitTree").querySelectorAll(".row[data-path]")].find(row => row.dataset.path === preview.path)?.scrollIntoView({ block: "nearest" });
+  }
 }
 
 
 function showPanelDialog(id) {
+  closeMenus(true);
   dialogFocus = document.activeElement;
   by(id).setAttribute("open", "");
   by("dialogShade").hidden = false;
@@ -479,6 +510,7 @@ function showPanelDialog(id) {
 }
 
 function dismissDialog(id) {
+  closeMenus();
   by(id).removeAttribute("open");
   by("dialogShade").hidden = true;
   for (const element of document.querySelectorAll("body > nav, body > main, #status, #pending")) element.inert = false;
@@ -495,6 +527,7 @@ function localizeCommitControls() {
   const shelve = changeDialogMode === "shelve";
   by("commitTitle").textContent = shelve ? t("Shelve Changes") : t("Commit Changes");
   by("commit").textContent = shelve ? t("Shelve Changes") : t("Commit");
+  by("commitNoteLabel").textContent = shelve ? t("Shelf name") : t("Commit Message");
 }
 
 function openCommit(paths = [], mode = "commit") {
@@ -508,7 +541,10 @@ function openCommit(paths = [], mode = "commit") {
   by("shelveCounts").hidden = !shelve;
   by("shelveShowDiff").hidden = !shelve;
   by("shelveTreeActions").hidden = !shelve;
-  by("shelveDiffToolbar").hidden = !shelve;
+  const unified = shelve ? shelveUnified : commitUnified;
+  by("shelveUnified").setAttribute("aria-pressed", String(unified));
+  by("shelveSideBySide").setAttribute("aria-pressed", String(!unified));
+  by("commitError").hidden = true;
   by("note").value = drafts[mode];
   const select = by("commitGroup");
   const groups = new Set(["Changes", ...state.changes.map(change => change.group).filter(Boolean)]);
@@ -537,6 +573,7 @@ function snapshot(next) {
     choose("");
     for (const log of Object.values(logs)) log.loaded = false;
     if (state.project) {
+      if (by("dialog").open) dismissDialog("dialog");
       by("note").value = "";
       drafts.commit = drafts.shelve = "";
       if (by("commitDialog").open) dismissDialog("commitDialog");
@@ -548,7 +585,8 @@ function snapshot(next) {
     }
   }
   state = next;
-  const selectFirst = changed && !active ? state.changes.find(change => change.item !== "unversioned" && canCommit(change))?.path : null;
+  const selectFirst = changed && !active ? (state.changes.find(change => !change.directory && change.item !== "unversioned" && canCommit(change))
+    || state.changes.find(change => change.item !== "unversioned" && canCommit(change)))?.path : null;
   const valid = new Set(state.changes.filter(canCommit).map(x => x.path));
   for (const p of selected) if (!valid.has(p)) selected.delete(p);
   if (active && !state.changes.some(change => change.path === active)) choose("");
@@ -682,15 +720,17 @@ function renderProps(data, meta) {
   list.replaceChildren();
   for (const property of props) {
     const row = el("div", undefined, "row");
+    const actions = el("div", undefined, "property-actions");
     row.append(el("strong", property.name), el("span", property.binary ? t("Binary property") : property.value, "grow"));
     if (!property.binary) {
       const edit = el("button", t("Edit…"));
       edit.onclick = () => propertyDialog(property.name, property.value);
-      row.append(edit);
+      actions.append(edit);
     }
     const remove = el("button", t("Delete…"));
     remove.onclick = () => send("propertyDelete", { path: propTarget, name: property.name });
-    row.append(remove);
+    actions.append(remove);
+    row.append(actions);
     list.append(row);
   }
   if (props.length === 0) list.append(el("p", t("This path has no explicit SVN properties"), "caption"));
@@ -804,6 +844,10 @@ function renderLog(name) {
     };
     groups.get(groupName).append(line);
   }
+  const visible = [...list.querySelectorAll(".row")];
+  const selected = visible.find(row => row.dataset.active === "true") || visible[0];
+  if (selected) selected.click();
+  else logPart(name, "paths").replaceChildren(el("div", t("No differences"), "empty"));
   logPart(name, "older").disabled = log.next == null;
 }
 
@@ -892,8 +936,9 @@ function handleData(data, meta) {
   }
   if (data.localPreview && meta?.previewTo) {
     const expected = meta.previewTo === "localDiff" ? active : commitPath;
-    const dataForPreview = meta.previewTo === "commitPreview" && changeDialogMode === "shelve"
-      ? { ...data.localPreview, unified: shelveUnified, editHash: undefined } : data.localPreview;
+    const dataForPreview = meta.previewTo === "commitPreview"
+      ? { ...data.localPreview, unified: changeDialogMode === "shelve" ? shelveUnified : commitUnified, readOnly: true, editHash: undefined }
+      : data.localPreview;
     if (expected === meta.data.path) renderPreview(by(meta.previewTo), dataForPreview);
   }
   if (data.previewEdited) {
@@ -902,7 +947,7 @@ function handleData(data, meta) {
   }
   if (data.currentRevision) {
     const { path, revision } = data.currentRevision;
-    form("Current Revision", [{ ...field("revision", relative(path), String(revision)), translateLabel: false }], () => {});
+    form("Current Revision", [{ ...field("revision", relative(path), String(revision)), translateLabel: false, readOnly: true }], () => {}, "Close");
   }
   if (data.entries && data.location) renderRepo(data);
   else if (data.entries && meta?.log) displayLog(meta.log, data, meta.append);
@@ -934,7 +979,10 @@ function handleData(data, meta) {
   if (data.resolved) clearConflict();
   if (data.updated) displayUpdate(data.output);
   if (data.committed || data.updated) {
-    if (data.committed && by("commitDialog").open) dismissDialog("commitDialog");
+    if (data.committed && by("commitDialog").open) {
+      dismissDialog("commitDialog");
+      drafts.commit = "";
+    }
     selected.clear();
     for (const log of Object.values(logs)) log.loaded = false;
     if (logs[currentTab]) loadLog(currentTab);
@@ -978,6 +1026,12 @@ function receive(raw) {
   if (msg.languageOnly) {
     if (msg.seq !== languageRequest?.serial) return;
     languageRequest = null;
+    for (const [key, css] of [["panelFontSize", "--svn-ui-size"], ["diffFontSize", "--svn-diff-size"]]) {
+      const value = msg[key];
+      const style = document.documentElement.style;
+      if (Number.isFinite(value) && value > 0) style.setProperty(css, Math.max(10, Math.min(value, 24)) + "px");
+      else style.removeProperty(css);
+    }
     updatePanelLanguage(msg);
     return;
   }
@@ -996,11 +1050,13 @@ function receive(raw) {
     } else {
       if (["commit", "shelve"].includes(meta?.op) && by("commitDialog").open) {
         by("commitError").textContent = msg.error;
-        by("commitDialog").dataset.error = "true";
+        by("commitError").hidden = false;
+        by("commitError").scrollIntoView({ block: "nearest" });
         updateCommit();
       }
       if (meta?.op === "unshelve" && by("unshelveDialog").open) {
         by("unshelveError").textContent = msg.error;
+        by("unshelveError").scrollIntoView({ block: "nearest" });
         by("applyUnshelve").disabled = false;
       }
       if (meta?.op === "shelfDiff" && meta.data.value === "preview" && currentShelf()?.id === meta.data.peg) {
@@ -1014,6 +1070,10 @@ function receive(raw) {
     if (!meta?.previewTo) {
       const message = msg.data.updateError || msg.data.refreshError || msg.data.output?.trim().split("\n").at(-1) || "";
       status(message, Boolean(msg.data.updateError || msg.data.refreshError), Boolean(message));
+    }
+    if (msg.data.canceled) {
+      if (["commit", "shelve"].includes(meta?.op) && by("commitDialog").open) updateCommit();
+      if (meta?.op === "unshelve" && by("unshelveDialog").open) by("applyUnshelve").disabled = false;
     }
     handleData(msg.data, meta);
   }
@@ -1035,6 +1095,7 @@ function form(title, fields, submit, verb = "OK", layout = "") {
   formText.set(by("dialogOk"), verb);
   formText.set(by("dialogTitle"), title);
   by("dialog").dataset.layout = layout;
+  by("dialog").dataset.closeOnly = String(verb === "Close");
   by("fields").replaceChildren();
   const inputs = {};
   for (const f of fields) {
@@ -1056,19 +1117,26 @@ function form(title, fields, submit, verb = "OK", layout = "") {
       input.append(option);
     }
     input.required = Boolean(f.required);
+    input.readOnly = Boolean(f.readOnly);
     input.value = f.value ?? "";
     inputs[f.name] = input;
     if (f.type !== "checkbox") label.append(input);
     by("fields").append(label);
   }
   by("dialogOk").onclick = () => {
-    if (Object.values(inputs).some(input => !input.reportValidity())) return;
+    const invalid = Object.values(inputs).find(input => !input.checkValidity());
+    if (invalid) {
+      invalid.focus();
+      invalid.reportValidity();
+      return;
+    }
     dismissDialog("dialog");
     submit(Object.fromEntries(Object.entries(inputs).map(([key, input]) => [key, input.type === "checkbox" ? input.checked : input.value])));
   };
   showPanelDialog("dialog");
   localizeForm();
-  (Object.values(inputs).find(input => !input.disabled) || by("dialogOk")).focus();
+  (Object.values(inputs).find(input => !input.disabled) || by("dialogOk")).focus({ preventScroll: true });
+  by("fields").parentElement.scrollTop = 0;
   return inputs;
 }
 
@@ -1189,11 +1257,14 @@ function showUpdate(paths = [], url = "") {
   ];
   const inputs = form(title, fields, ({ switchUrl, useRevision, branch, ...data }) => send("update", {
     ...data, paths, url: switchUrl ? data.url : "", revision: useRevision ? data.revision : "HEAD"
-  }), undefined, "update");
+  }), "Update", "update");
   if (!inputs) return;
   const toggle = () => {
     inputs.url.disabled = inputs.branch.disabled = !inputs.switchUrl.checked;
     inputs.revision.disabled = !inputs.useRevision.checked;
+    inputs.branch.closest("label").hidden = inputs.branch.disabled || branches.length === 0;
+    inputs.url.closest("label").hidden = inputs.url.disabled;
+    inputs.revision.closest("label").hidden = inputs.revision.disabled;
   };
   inputs.branch.onchange = () => { if (inputs.branch.value) inputs.url.value = inputs.branch.value; };
   inputs.switchUrl.onchange = inputs.useRevision.onchange = toggle;
@@ -1281,8 +1352,8 @@ function changeMenu(x, y, change) {
     [t("Commit File…"), canCommit(change) && action("commit")],
     [t("Revert…"), tracked && run("revert"), { icon: "revert", shortcut: "Ctrl+Alt+Z" }],
     [t("Move to Another Changelist…"), tracked && !change.directory && changelist("Move to Another Changelist", change.group), { shortcut: "Alt+Shift+M" }],
-    [t("Show Diff"), diff, { icon: "diff", shortcut: "Ctrl+D" }],
-    [t("Show Diff in a New Tab"), diff, { icon: "diff" }],
+    [t("Show Diff Preview"), !change.directory && !hasConflict && (() => { if (by("localPane").hidden) by("previewToggle").click(); }), { icon: "preview" }],
+    [t("Open Diff in Editor"), diff, { icon: "diff", shortcut: "Ctrl+D" }],
     [t("Jump to Source"), exists && !change.directory && run("openSource"), { icon: "edit", shortcut: "F4" }],
     [t("Copy Path/Reference…"), null, { submenu: [
       [t("Absolute Path"), () => copyText(path)],
@@ -1307,7 +1378,25 @@ function changeMenu(x, y, change) {
   ]);
 }
 
-document.querySelectorAll("nav button[data-tab]").forEach(button => { button.onclick = () => tab(button.dataset.tab); });
+document.querySelectorAll("nav button[data-tab]").forEach(button => {
+  const name = button.dataset.tab;
+  button.id = "tab-" + name;
+  button.tabIndex = name === currentTab ? 0 : -1;
+  button.setAttribute("aria-controls", name);
+  by(name).setAttribute("role", "tabpanel");
+  by(name).setAttribute("aria-labelledby", button.id);
+  button.onclick = () => tab(name);
+  button.onkeydown = event => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    const tabs = [...document.querySelectorAll("#tabs button:not([hidden])")];
+    const index = tabs.indexOf(button);
+    const offset = event.key === "ArrowRight" ? 1 : -1;
+    const next = event.key === "Home" ? tabs[0] : event.key === "End" ? tabs.at(-1) : tabs[(index + offset + tabs.length) % tabs.length];
+    event.preventDefault();
+    next.focus({ preventScroll: true });
+    next.click();
+  };
+});
 for (const name of Object.keys(logs)) {
   by(name).append(by("logView").content.cloneNode(true));
   logPart(name, "refresh").onclick = () => loadLog(name);
@@ -1372,7 +1461,8 @@ document.addEventListener("keydown", event => {
     }
   }
   const dialog = document.querySelector("dialog[open]");
-  if (dialog && event.key === "Enter" && (event.ctrlKey || event.target.matches("input:not([type=checkbox])"))) {
+  if (dialog && !event.isComposing && event.key === "Enter" &&
+      (event.ctrlKey || dialog.id === "dialog" && event.target.matches("input:not([type=checkbox])"))) {
     event.preventDefault();
     by(dialog.id === "commitDialog" ? "commit" : dialog.id === "unshelveDialog" ? "applyUnshelve" : "dialogOk").click();
     return;
@@ -1382,7 +1472,7 @@ document.addEventListener("keydown", event => {
       event.preventDefault();
       dismissDialog(dialog.id);
     } else {
-      const tabStops = [...dialog.querySelectorAll("button:enabled, input:enabled, select:enabled, textarea:enabled")].filter(node => node.offsetParent);
+      const tabStops = [...dialog.querySelectorAll("button:enabled, input:enabled, select:enabled, textarea:enabled, [tabindex='0'], summary")].filter(node => node.getClientRects().length);
       const index = tabStops.indexOf(document.activeElement);
       if (index < 0 || (event.shiftKey ? index === 0 : index === tabStops.length - 1)) {
         event.preventDefault();
@@ -1405,9 +1495,14 @@ document.addEventListener("keydown", event => {
       return;
     }
   }
-  if (currentTab === "changes" && !by("localPane").hidden && !dialog && event.key === "F7") {
+  if (event.key === "F7") {
+    const id = dialog?.id === "commitDialog" ? "commitPreview"
+      : !dialog && currentTab === "changes" && !by("localPane").hidden ? "localDiff"
+      : !dialog && currentTab === "shelf" && !by("shelfPane").hidden ? "shelfPreview"
+      : null;
+    if (!id) return;
     event.preventDefault();
-    moveDifference(event.shiftKey ? -1 : 1);
+    moveDifference(event.shiftKey ? -1 : 1, id);
   }
 });
 initShelf();
@@ -1416,7 +1511,7 @@ by("shelveShowDiff").onclick = () => {
   const change = state.changes.find(change => change.path === commitPath);
   if (change) openDiff(change);
 };
-by("dialogCancel").onclick = () => dismissDialog("dialog");
+by("closeDialog").onclick = by("dialogCancel").onclick = () => dismissDialog("dialog");
 by("refresh").onclick = by("copiesRefresh").onclick = by("commitRefresh").onclick = () => send("refresh");
 by("recover").onclick = () => send("recover");
 by("filter").oninput = redrawChanges;
@@ -1469,7 +1564,7 @@ by("diffSettings").onclick = event => buttonMenu(event.currentTarget, diffOption
 const splitter = by("changeSplitter");
 function resizeTree(position) {
   const width = by("changes").clientWidth;
-  const size = Math.max(90, Math.min(width - 135, position));
+  const size = Math.max(90, Math.min(width * .55, position));
   by("changes").style.setProperty("--tree-width", size + "px");
 }
 splitter.onpointerdown = event => splitter.setPointerCapture(event.pointerId);
@@ -1486,6 +1581,7 @@ by("commit").onclick = () => {
   if (by("commit").disabled) return;
   by("commit").disabled = true;
   by("commitError").textContent = "";
+  by("commitError").hidden = true;
   if (changeDialogMode === "shelve") send("shelve", { paths: [...selected], name: by("note").value });
   else send("commit", { paths: [...selected], note: by("note").value,
     autoUpdate: by("autoUpdate").checked, keepLocked: by("keepLocked").checked });
@@ -1554,6 +1650,8 @@ document.addEventListener("visibilitychange", () => {
     scheduleRefresh();
   }
 });
+window.addEventListener("blur", () => closeMenus());
+window.addEventListener("openidea:outside-pointerdown", () => closeMenus());
 window.addEventListener("focus", requestLanguage);
 window.openidea.onMessage(raw => {
   try { receive(raw); } catch (error) { status(t("Could not read the SVN panel response · ") + error.message, true); }

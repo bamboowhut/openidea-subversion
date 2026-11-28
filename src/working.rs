@@ -388,8 +388,7 @@ impl Session {
         confirm(
             tr(title),
             &trf!(
-                "Directory operations include descendants. Review the {0} targets below.\n\n{1}",
-                paths.len(),
+                "Review the selected paths. If you selected a directory, its contents are included.\n\n{0}",
                 display(&paths)
             ),
         )?;

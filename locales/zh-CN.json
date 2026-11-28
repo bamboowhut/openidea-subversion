@@ -67,7 +67,7 @@
   "Delete property": "删除属性",
   "Destination r{0}": "目标 r{0}",
   "Device paths are unsupported": "不支持设备路径",
-  "Directory operations include descendants. Review the {0} targets below.\n\n{1}": "目录操作涵盖其后代。请核对即将处理的 {0} 个目标。\n\n{1}",
+  "Review the selected paths. If you selected a directory, its contents are included.\n\n{0}": "请核对所选路径。若选中目录，操作也会处理目录内的内容。\n\n{0}",
   "Does not exist": "不存在",
   "Edit Properties": "编辑属性",
   "Enter a commit message of at most 16 KiB": "请填写 16 KiB 以内的提交说明",

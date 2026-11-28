@@ -773,7 +773,9 @@ impl Plugin for Subversion {
         if events.iter().any(|event| {
             matches!(event, Event::Other { kind, data }
                 if kind == EventKind::SettingsChanged.name()
-                    && serde_json::from_str::<Vec<&str>>(data).is_ok_and(|keys| keys.contains(&"language")))
+                    && serde_json::from_str::<Vec<&str>>(data).is_ok_and(|keys| {
+                        keys.iter().any(|key| matches!(*key, "language" | "panelFontSize" | "diffFontSize"))
+                    }))
         }) {
             // View messages are broadcast. Let each panel read its own project settings.
             let _ = post(&json!({"languageChanged": true}));
@@ -866,13 +868,21 @@ impl Views for Subversion {
             }
             let language = i18n::active_language();
             if request.language_only {
-                return post(
-                    &json!({"panel": request.panel, "seq": request.seq, "language": language, "languageOnly": true}),
-                );
+                return post(&json!({
+                    "panel": request.panel,
+                    "seq": request.seq,
+                    "language": language,
+                    "languageOnly": true,
+                    "panelFontSize": host::setting_number("panelFontSize"),
+                    "diffFontSize": host::setting_number("diffFontSize"),
+                }));
             }
             match self.execute(ctx, &request) {
                 Ok(data) => post(
                     &json!({"panel": request.panel, "seq": request.seq, "language": language, "data": data}),
+                )?,
+                Err(error) if error == tr("Operation canceled") => post(
+                    &json!({"panel": request.panel, "seq": request.seq, "language": language, "data": {"canceled": true}}),
                 )?,
                 Err(error) => {
                     let _ = host::output_append("Subversion", &format!("{error}\n"));

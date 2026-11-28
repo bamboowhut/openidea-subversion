@@ -1,5 +1,15 @@
 // Simplified Chinese translations for the Subversion tool window.
 const chineseMessages = {
+  "Working Copies": "工作副本",
+  "Base version": "基线版本",
+  "Open Diff in Editor": "在编辑器中打开差异",
+  "Open Diff in Editor (Ctrl+D)": "在编辑器中打开差异 (Ctrl+D)",
+  "Selected: ": "已选 ",
+  "Shelf name": "搁置名称",
+  "Commit options": "提交选项",
+  "Highlight Changed Text": "突出显示修改的文字",
+  "Synchronize Vertical Scrolling": "同步垂直滚动",
+  " unchanged lines": " 行未改动",
   " and ": "和",
   " difference": " 处差异",
   " differences": " 处差异",

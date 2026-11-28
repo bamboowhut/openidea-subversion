@@ -20,6 +20,8 @@ Subversion is a community plugin for [OpenIDEA](https://github.com/l0ng-ai/openi
 
 Open **Settings › Plugins › Subversion › Language**. Choose **Follow IDE** (the default), **English**, or **Simplified Chinese**. In **Follow IDE** mode, a Chinese IDE locale selects Simplified Chinese and all other locales use English.
 
+In the same settings page, **Tool window font size (px)** controls the panel and dialog text. **Diff preview font size (px)** controls embedded previews and conflict text. Set either to **0** to follow OpenIDEA or choose **10–24 px**. Diffs opened in the editor use OpenIDEA's editor font size.
+
 The tool window switches automatically, including open plugin forms. OpenIDEA localizes its own menus and Find Action entries using the IDE display language.
 
 ## Features
@@ -60,8 +62,8 @@ Copy `target/wasm32-wasip2/release/openidea_subversion.wasm` to `dist/plugin.was
 ```sh
 mkdir -p release
 openidea-plugin check .
-openidea-plugin pack . --out release/bamboowhut.subversion-0.1.15.oiplugin
-openidea-plugin check release/bamboowhut.subversion-0.1.15.oiplugin
+openidea-plugin pack . --out release/bamboowhut.subversion-1.0.0.oiplugin
+openidea-plugin check release/bamboowhut.subversion-1.0.0.oiplugin
 ```
 
 See the [manual testing guide](docs/manual-testing.md) for IDE workflows and [CONTRIBUTING.md](CONTRIBUTING.md) for development and releases.

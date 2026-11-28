@@ -9,7 +9,7 @@ const input = JSON.parse(readFileSync(0, "utf8"));
 const noop = () => {};
 const elements = new Map();
 const element = () => ({
-  dataset: {}, classList: { toggle: noop }, content: { cloneNode: noop }, querySelector: () => ({}),
+  dataset: {}, classList: { toggle: noop }, content: { cloneNode: noop }, querySelector: () => ({}), querySelectorAll: () => [],
   append: noop, focus: noop, select: noop, replaceChildren: noop, setAttribute: noop
 });
 const document = {

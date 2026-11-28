@@ -14,16 +14,18 @@
   --surface: color-mix(in srgb, var(--fg) 5%, var(--bg));
   --hover: color-mix(in srgb, var(--fg) 10%, var(--bg));
   --accent: var(--openidea-accent, Highlight);
-  font: 12px/1.4 system-ui, "Microsoft YaHei UI", sans-serif;
+  font: var(--svn-ui-size, var(--openidea-font-size, 13px))/1.45 var(--openidea-font-ui, "Segoe UI"), system-ui, sans-serif;
+  --diff-size: var(--svn-diff-size, var(--openidea-font-size, 13px));
+  --diff-font: var(--openidea-font-mono, Consolas), Consolas, monospace;
 }
 * { box-sizing: border-box; }
-body { color: var(--fg); background: var(--bg); margin: 0; min-width: 310px; }
+body { color: var(--fg); background: var(--bg); margin: 0; }
 button, input, select, textarea { font: inherit; color: inherit; background: var(--bg); }
 button, input, select, textarea { border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; }
 button { cursor: pointer; white-space: nowrap; }
 button:hover:not(:disabled) { background: var(--hover); }
 button:disabled { opacity: .47; cursor: default; }
-button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible {
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px;
 }
 input[type=checkbox] { accent-color: var(--accent); margin: 0; }
@@ -36,7 +38,8 @@ textarea { min-height: 65px; resize: vertical; }
 nav { display: flex; overflow-x: auto; border-bottom: 1px solid var(--border); padding: 0 5px; }
 nav button { border: 0; border-bottom: 2px solid transparent; background: transparent; padding: 6px 10px 5px; border-radius: 0; }
 nav [aria-selected=true] { border-bottom-color: var(--accent); font-weight: 600; }
-.status { border-bottom: 1px solid var(--border); padding: 4px 8px; color: var(--muted); white-space: pre-wrap; }
+.status { border-bottom: 1px solid var(--border); padding: 4px 8px; color: var(--muted); white-space: pre-wrap; overflow: auto; overflow-wrap: anywhere; max-height: 24vh; }
+.status[data-running=true] { position: absolute; inset: auto 8px 8px auto; z-index: 3; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; pointer-events: none; }
 .status.error { color: var(--fg); border-inline-start: 3px solid #da6464; }
 .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(225px, .38fr); }
 .split > :first-child { border-inline-end: 1px solid var(--border); }
@@ -47,7 +50,7 @@ nav [aria-selected=true] { border-bottom-color: var(--accent); font-weight: 600;
 .row[tabindex] { cursor: pointer; }
 .row > .grow { min-width: 0; overflow-wrap: anywhere; }
 .row .meta { color: var(--muted); white-space: nowrap; }
-.badge { font: 600 11px ui-monospace, Consolas, monospace; min-width: 20px; text-align: center; }
+.badge { font: 600 .9em ui-monospace, Consolas, monospace; min-width: 20px; text-align: center; }
 .badge[data-code=C] { color: #dc6c67; }
 .badge[data-code=A] { color: #438959; }
 .badge[data-code=D] { color: #bc6868; }
@@ -63,8 +66,8 @@ legend { padding: 0; font-weight: 600; }
 pre { margin: 0; padding: 8px; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; max-height: 56vh; overflow: auto; background: var(--surface); }
 #mergeSides { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
 #mergeSides .side { min-width: 0; }
-#mergeSides pre { height: 130px; overflow: auto; white-space: pre; font: 11px/1.45 ui-monospace, Consolas, monospace; }
-#mergeText { font: 12px/1.5 ui-monospace, Consolas, monospace; min-height: 125px; tab-size: 4; }
+#mergeSides pre { height: clamp(85px, 25vh, 170px); overflow: auto; white-space: pre; font: var(--diff-size)/1.5 var(--diff-font); }
+#mergeText { font: var(--diff-size)/1.5 var(--diff-font); min-height: 100px; tab-size: 4; }
 dialog { width: min(95%, 500px); color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
 dialog::backdrop { background: rgb(0 0 0 / .35); }
 dialog .dialog-fields, dialog label { display: grid; gap: 6px; }
@@ -72,17 +75,20 @@ dialog footer { display: flex; justify-content: end; gap: 5px; }
 @media (max-width: 620px) { .split { grid-template-columns: 1fr; } .split > :first-child { border-inline-end: 0; border-bottom: 1px solid var(--border); } }
 
 html, body { height: 100%; overflow: hidden; }
-body { display: flex; flex-direction: column; font: 13px/1.4 "Segoe UI", system-ui, sans-serif; }
-nav { flex: 0 0 34px; padding: 0 var(--openidea-corner-inset-width, 64px) 0 0; gap: 2px; align-items: stretch; }
+body { display: flex; flex-direction: column; }
+nav { flex: none; min-height: var(--openidea-corner-inset-height, 34px); padding: 0 var(--openidea-corner-inset-width, 0px) 0 0; gap: 2px; align-items: stretch; overflow: visible; }
+nav .tabs { display: flex; flex: 1; min-width: 0; overflow: auto hidden; scrollbar-width: thin; }
 nav strong { padding: 8px 10px; white-space: nowrap; font-weight: 650; }
-nav button { padding: 0 11px; }
-nav [aria-selected=true] { font-weight: 400; background: var(--surface); }
+nav button { padding: 5px .75em; }
+nav button:focus-visible, .row:focus-visible { outline-offset: -2px; }
+nav [aria-selected=true] { font-weight: 600; background: var(--surface); }
 main { flex: 1; min-height: 0; overflow: auto; }
 #status:not(.error):not([data-visible=true]) { display: none; }
 .workspace { height: 100%; min-height: 0; }
-#changes { display: grid; grid-template-columns: 32px minmax(90px, var(--tree-width, 27%)) 5px minmax(0, 1fr); }
+#changes { display: grid; grid-template-columns: 32px clamp(90px, var(--tree-width, 27%), 55%) 5px minmax(0, 1fr); }
 #changes[data-no-preview=true] { grid-template-columns: 32px minmax(0, 1fr); }
-.rail { padding: 3px; display: flex; flex-direction: column; align-items: center; gap: 2px; overflow: auto; }
+.rail { padding: 3px; display: flex; flex-direction: column; align-items: center; gap: 2px; overflow: auto; scrollbar-width: thin; }
+.rail .icon { flex: none; }
 .icon { display: inline-grid; place-items: center; width: 26px; height: 25px; padding: 0; border: 1px solid transparent; background: transparent; }
 .icon:hover:not(:disabled), .icon[aria-pressed=true] { background: var(--hover); }
 .svg-icon { display: inline-flex; flex: none; vertical-align: middle; width: 16px; height: 16px; color: var(--openidea-fg-muted, var(--muted)); }
@@ -96,7 +102,7 @@ main { flex: 1; min-height: 0; overflow: auto; }
 .change-pane .list, .log-pane .list, .commit-selection .list { flex: 1; min-height: 0; max-height: none; }
 .splitter { background: var(--border); cursor: col-resize; touch-action: none; border: 1px solid var(--bg); }
 .list { padding: 2px 6px; }
-.row { min-height: 21px; padding: 2px 5px; }
+.row { min-height: max(23px, 1.65em); padding: 2px 5px; }
 .row[data-active=true] { background: color-mix(in srgb, var(--accent) 30%, var(--bg)); }
 .changes-tree .row > .grow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tree-heading { display: flex; gap: 6px; padding: 2px 4px; min-height: 23px; align-items: center; border-radius: 4px; }
@@ -112,28 +118,34 @@ details:not([open]) > .tree-heading .expanded, details[open] > .tree-heading .co
 .name-C, .name-D { color: light-dark(#ac3239, #df7777); }
 .name-unversioned { color: var(--muted); }
 .preview-toolbar { min-height: 30px; border-bottom: 1px solid var(--border); }
-.diff-tools { gap: 2px; padding: 3px 6px; flex-wrap: nowrap; }
+.diff-tools { gap: 2px; padding: 3px 6px; flex-wrap: wrap; }
 .diff-tools .icon { width: 24px; }
 .diff-tools .separator { align-self: center; width: 1px; height: 18px; background: var(--border); margin-inline: 3px; flex: none; }
 .diff-tools .space { flex: 1; }
 .diff-tools .file-count { color: var(--openidea-link, var(--accent)); }
 #differenceCount { color: var(--muted); white-space: nowrap; margin-inline-end: 7px; }
-#previewName { color: var(--muted); display: flex; align-items: center; gap: 5px; }
 .preview-output { flex: 1; display: flex; position: relative; min-height: 0; }
-.empty { color: var(--muted); display: grid; place-items: center; min-height: 36px; flex: 1; }
+.empty { color: var(--muted); display: grid; place-items: center; min-height: 36px; flex: 1; padding: .5em .75em; text-align: center; overflow-wrap: anywhere; }
 .preview-side { flex: 1 1 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
 .preview-side + .preview-side { border-left: 1px solid var(--border); }
-.preview-side header { padding: 3px 8px; color: var(--muted); min-height: 23px; display: flex; gap: 4px; align-items: center; }
+.preview-side header { padding: 4px 8px; color: var(--muted); display: flex; gap: 5px; align-items: center; border-bottom: 1px solid var(--border); }
+.preview-side header span:not(.svg-icon) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.preview-side .file-lines { flex: 1; min-height: 0; overflow: auto; font: 12px/1.6 Consolas, monospace; background: var(--surface); }
+.preview-side .file-lines { flex: 1; min-height: 0; overflow: auto; font: var(--diff-size)/1.6 var(--diff-font); background: var(--surface); tab-size: 4; overflow-anchor: none; }
 .file-line { white-space: pre; min-height: 1.6em; min-width: max-content; display: flex; }
-.file-line .line-number { flex: 0 0 34px; user-select: none; text-align: right; padding-right: 8px; color: var(--muted); background: color-mix(in srgb, var(--fg) 6%, transparent); }
+.file-line .line-number { flex: 0 0 var(--gutter-width, 4ch); user-select: none; text-align: right; padding-right: 6px; color: var(--muted); background: color-mix(in srgb, var(--fg) 6%, transparent); }
+.file-line .line-marker { flex: 0 0 1.3ch; text-align: center; user-select: none; }
 .file-line .line-text { padding: 0 4px; flex: 1; }
 .file-line[data-changed=true] { background: light-dark(#d6e5fa, #2c455c); }
 .file-line[data-removed=true] { background: light-dark(#f4dce0, #463037); }
 .file-line[data-inserted=true] { background: light-dark(#d9efde, #304536); }
-.file-line .line-author { min-width: 80px; color: var(--muted); user-select: none; }
-.file-line.folded { display: block; width: 100%; color: var(--muted); text-align: center; border-radius: 0; border: 0; }
+.file-line[data-placeholder=true] { background: repeating-linear-gradient(135deg, transparent 0 4px, var(--hover) 4px 5px); }
+.file-line[data-current=true] { box-shadow: inset 3px 0 var(--accent); }
+.file-line mark { color: inherit; background: light-dark(#aac8ee, #425f80); border-radius: 2px; }
+.file-line[data-removed=true] mark { background: light-dark(#edb5bf, #693d46); }
+.file-line[data-inserted=true] mark { background: light-dark(#b6dfbc, #3c6048); }
+.file-line .line-author { flex: 0 0 15ch; color: var(--muted); user-select: none; overflow: hidden; text-overflow: ellipsis; }
+.file-line.folded { display: block; width: 100%; padding: 0 .5em; color: var(--muted); text-align: center; border-radius: 0; border: 0; text-overflow: ellipsis; overflow: hidden; }
 .file-lines { outline-offset: -2px; }
 .preview-side[data-added=true] .file-lines { background: light-dark(#e6f4e9, #243c31); }
 .preview-side[data-deleted=true] .file-lines { background: light-dark(#f8e6e7, #462d32); }
@@ -152,49 +164,57 @@ details:not([open]) > .tree-heading .expanded, details[open] > .tree-heading .co
 .revision { color: var(--muted); padding-left: 13px; }
 .narrow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .link { border: 0; background: transparent; color: light-dark(#2f61b3, #6b9ce9); text-align: left; padding: 3px 0; }
-.wc-info { display: flex; gap: 15px; align-items: start; }
-.wc-card { padding: 9px 0; display: grid; align-content: start; }
-.wc-card dl { display: grid; grid-template-columns: 130px 1fr; gap: 6px; margin: 6px 0 3px; }
+.wc-info { display: flex; gap: 12px; align-items: start; padding-inline-end: 10px; }
+.wc-card { padding: 9px 0; display: grid; align-content: start; min-width: 0; gap: 5px; }
+.wc-card dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 12px; margin: 6px 0 3px; }
+#scope { white-space: normal; overflow-wrap: anywhere; }
 .wc-card dd { margin: 0; overflow-wrap: anywhere; }
+.wc-card .toolbar { padding-inline: 0; gap: 6px 16px; }
 .overflow { margin-left: auto; align-self: center; }
 .overflow.icon { padding: 0; }
-dialog { position: fixed; inset: 0; margin: auto; height: fit-content; max-height: calc(100% - 8px); max-width: calc(100% - 8px); z-index: 6; overflow: auto; }
+dialog { position: fixed; inset: 0; margin: auto; height: fit-content; max-height: calc(100% - 12px); max-width: calc(100% - 12px); z-index: 6; overflow: hidden; padding: 0; }
 #dialogShade { position: fixed; inset: 0; background: rgb(0 0 0 / .35); z-index: 5; }
-dialog h2 { font-size: 13px; font-weight: 500; margin: 0 0 9px; }
+dialog h2 { font-size: 1.08em; font-weight: 600; margin: 0; }
 dialog textarea { background: var(--surface); }
-#dialogForm, #fields, #fields > label { min-width: 0; }
+dialog .dialog-fields { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 0; min-width: 0; height: 100%; max-height: calc(100vh - 14px); }
+.dialog-body { min-width: 0; min-height: 0; overflow: auto; padding: 9px 12px; }
+dialog footer { align-items: center; flex-wrap: wrap; padding: 7px 12px; border-top: 1px solid var(--border); background: var(--bg); }
+dialog footer > button { min-width: 5em; max-width: 100%; white-space: normal; }
+dialog footer .grow { flex-basis: auto; min-width: 0; }
+#fields > label { min-width: 0; overflow-wrap: anywhere; }
 #fields input:not([type=checkbox]), #fields select, #fields textarea { min-width: 0; max-width: 100%; width: 100%; }
 #dialog[data-layout=update] { width: min(370px, 95%); }
-#dialog[data-layout=update] #fields > label:not(.checkbox) { grid-template-columns: 72px minmax(0, 1fr); align-items: center; }
-@media (max-height: 360px) {
-  #commitForm { grid-template-rows: auto minmax(105px, 2fr) minmax(36px, 1fr) auto; }
-  #commitDialog textarea { height: 38px; }
-  .commit-selection #commitTree { min-height: 44px; }
-}
-.dialog-title { display: flex; justify-content: space-between; align-items: center; margin: -5px 0 1px; }
-.dialog-title h2 { margin: 0; }
-.action-menu { position: fixed; z-index: 8; display: grid; min-width: 190px; max-width: calc(100vw - 4px); background: var(--openidea-bg-elevated, var(--surface)); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 5px 12px #0006; padding: 4px; max-height: calc(100% - 4px); overflow: auto; }
+#dialog[data-layout=update] #fields > label:not(.checkbox) { grid-template-columns: minmax(4.5em, max-content) minmax(0, 1fr); align-items: center; }
+#dialog[data-close-only=true] #dialogCancel { display: none; }
+.dialog-title { display: flex; gap: 8px; justify-content: space-between; align-items: center; padding: 6px 10px 6px 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.dialog-title .icon { flex: none; }
+.action-menu { position: fixed; z-index: 8; display: grid; min-width: min(190px, calc(100vw - 4px)); max-width: calc(100vw - 4px); background: var(--openidea-bg-elevated, var(--surface)); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 5px 12px #0006; padding: 4px; max-height: calc(100% - 4px); overflow: auto; overscroll-behavior: contain; }
 .action-menu button { border: 0; background: transparent; text-align: left; padding: 3px 7px 3px 4px; min-height: 25px; display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 6px; align-items: center; }
 .action-menu button:hover:not(:disabled), .action-menu button:focus { background: var(--hover); outline: none; }
 .action-menu .shortcut { color: var(--muted); margin-inline-start: 14px; }
 .action-menu hr { width: 100%; border: 0; border-bottom: 1px solid var(--border); margin: 3px 0; }
-.action-menu .menu-label { overflow: hidden; text-overflow: ellipsis; }
-#commitDialog { width: min(960px, calc(100% - 12px)); height: min(654px, calc(100% - 10px)); padding: 8px 10px; }
-#commitForm { height: 100%; grid-template-rows: auto minmax(70px, 1.6fr) minmax(46px, 1fr) auto; gap: 6px; }
-.commit-grid { display: grid; grid-template-columns: minmax(0, 60%) minmax(0, 1fr); gap: 10px; min-height: 0; }
+.action-menu .menu-label { white-space: normal; overflow-wrap: anywhere; }
+#commitDialog { width: min(980px, calc(100% - 12px)); height: min(670px, calc(100% - 12px)); }
+.commit-body { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(210px, 1.25fr) auto minmax(max(120px, 9rem), 1fr); gap: 8px; }
+.commit-grid { display: grid; gap: 7px; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
 .commit-selection #commitTree { border: 1px solid var(--border); }
-.commit-selection label[for=note] { display: block; margin: 5px 0 3px; }
-#commitDialog textarea { min-height: 30px; height: 65px; flex-shrink: 1; resize: none; }
-.commit-options { min-width: 0; overflow: auto; }
-.commit-options label { display: flex; gap: 8px; padding: 5px 4px; }
-.commit-options legend { border-bottom: 1px solid var(--border); width: 100%; font-weight: 400; }
-#commitDiff { border-top: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
-#commitDiff > label { padding: 2px 0; }
-.primary:not(:disabled) { background: color-mix(in srgb, var(--accent) 78%, var(--bg)); color: white; }
+.commit-selection .toolbar { padding: 0 0 5px; }
+.commit-selection .toolbar .grow { flex-basis: auto; min-width: 0; }
+#commitGroup { min-width: 0; max-width: 50%; }
+.commit-message { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.commit-message label[for=note] { display: block; }
+#commitDialog textarea { min-height: 2.5em; height: clamp(2.5em, 10vh, 5em); flex: none; resize: none; }
+.commit-options { min-width: 0; padding: 0; display: flex; gap: 4px 16px; flex-wrap: wrap; }
+.commit-options label, .shelf-options label { display: flex; gap: 6px; align-items: start; }
+.commit-options input, .shelf-options input { margin-block-start: .2em; flex: none; }
+#commitError:not(:empty), #unshelveError:not(:empty) { padding: 5px 8px; border-inline-start: 3px solid var(--openidea-danger, #da6464); overflow-wrap: anywhere; }
+#commitError { grid-row: 2; }
+#commitDiff { grid-row: 3; border-top: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.primary:not(:disabled) { background: var(--accent); color: var(--openidea-fg-on-accent, HighlightText); }
+.primary:hover:not(:disabled) { filter: brightness(1.12); }
 #shelf { display: grid; grid-template-columns: minmax(0, 1fr); padding: 0; }
-#shelf[data-preview=true] { grid-template-columns: minmax(180px, 30%) minmax(0, 1fr); }
+#shelf[data-preview=true] { grid-template-columns: minmax(120px, 30%) minmax(0, 1fr); }
 #shelf .change-pane { overflow: hidden; }
-#shelf .toolbar { flex-wrap: nowrap; }
 #shelf .row, #shelf .tree-heading { white-space: nowrap; }
 #shelf .tree-heading[data-active=true] { background: color-mix(in srgb, var(--accent) 30%, var(--bg)); }
 #shelf .no-children .disclosure { visibility: hidden; }
@@ -203,40 +223,67 @@ dialog textarea { background: var(--surface); }
 #shelfList { min-height: 0; flex: 1; padding: 4px 8px; }
 #shelfList .restored { color: var(--muted); }
 #shelfPreview .file-lines { cursor: text; }
-#commitDialog[data-mode=shelve] .commit-grid { grid-template-columns: minmax(0, 1fr); }
-#commitDialog[data-mode=shelve]:not([data-error=true]) .commit-options { display: none; }
-#commitDialog[data-mode=shelve] .commit-options { padding: 0 4px; }
-#commitDialog[data-mode=shelve] #commitTree { border: 1px solid var(--border); }
-#commitDialog[data-mode=shelve] #note { font-family: Consolas, monospace; resize: vertical; }
 #shelveDiffToolbar { border: 0; padding-inline: 0; }
-#unshelveDialog { width: min(94%, 1200px); height: min(95%, 600px); padding: 8px 12px; }
-#unshelveDialog .dialog-fields { display: flex; height: 100%; flex-direction: column; min-height: 280px; }
-#unshelveDialog label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+#unshelveDialog { width: min(720px, calc(100% - 12px)); height: min(550px, calc(100% - 12px)); }
+#unshelveDialog .dialog-body { display: flex; flex-direction: column; gap: 7px; }
 #unshelveDialog .toolbar { padding-inline: 2px; }
-#unshelveTree { min-height: 55px; flex: 1; border: 1px solid var(--border); padding: 4px 8px; }
-#unshelveDialog .shelf-form-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: start; }
+#unshelveTree { min-height: 68px; max-height: none; flex: 1; border: 1px solid var(--border); padding: 4px 8px; }
+#unshelveDialog .shelf-form-row { grid-template-columns: 6em minmax(0, 1fr); align-items: start; }
 #unshelveDialog textarea { width: 100%; min-height: 32px; resize: vertical; }
-#unshelveDialog footer { align-items: center; }
-#unshelveError:not(:empty) { color: var(--error); }
+.shelf-options { display: grid; gap: 6px; }
+#repoAction, .commit-search input, .toolbar select { min-width: 0; max-width: 100%; }
+#revision { width: 6em; }
+#historyTitle, #propertyTarget { overflow-wrap: anywhere; }
+#properties .row > strong { overflow-wrap: anywhere; }
+#properties .row > .grow { white-space: pre-wrap; }
+#properties .property-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+#updatedPaths { flex: 1; min-height: 0; max-height: none; }
+@media (min-width: 760px) {
+  .commit-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 12px; }
+  #commitDialog textarea { flex: 1; height: auto; }
+}
+@media (max-width: 600px) {
+  nav strong { display: none; }
+  .action-menu .shortcut { margin-inline-start: 4px; }
+  .log-grid { grid-template-columns: minmax(0, 56%) minmax(0, 1fr); }
+  #changes { grid-template-columns: minmax(0, 1fr); grid-template-rows: 32px minmax(62px, 2fr) minmax(116px, 3fr); overflow: auto; }
+  #changes[data-no-preview=true] { grid-template-rows: 32px minmax(0, 1fr); }
+  #changes .rail { flex-direction: row; border-bottom: 1px solid var(--border); padding-inline: 6px; scrollbar-width: none; }
+  #changes .splitter { display: none; }
+  #changes .preview { grid-column: 1 / -1; border-top: 1px solid var(--border); }
+  #shelf[data-preview=true] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(72px, 2fr) minmax(84px, 3fr); overflow: auto; }
+  #shelf .preview { border-left: 0; border-top: 1px solid var(--border); }
+  #mergeSides { grid-template-columns: minmax(0, 1fr); }
+  #propertyTarget { flex-basis: 100%; }
+  #properties .row { flex-wrap: wrap; gap: 4px 8px; margin-block-end: 8px; }
+  #properties .row > .grow { order: 1; flex-basis: 100%; background: var(--surface); padding: 4px 6px; }
+  #properties .property-actions { margin-inline-start: auto; }
+}
+@media (max-width: 360px) {
+  .action-menu .shortcut { display: none; }
+  #unshelveDialog .shelf-form-row { grid-template-columns: minmax(0, 1fr); }
+}
 </style>
 
 </head>
 <body>
 
-<nav aria-label="Subversion" role="tablist">
+<nav aria-label="Subversion">
   <strong>Subversion</strong>
+  <div id="tabs" class="tabs" role="tablist" aria-label="Subversion">
   <button role="tab" data-tab="changes" aria-selected="true">Local Changes</button>
   <button role="tab" data-tab="repository" aria-selected="false">Repository</button>
   <button role="tab" data-tab="incoming" aria-selected="false">Incoming</button>
   <button role="tab" data-tab="shelf" aria-selected="false">Shelf</button>
-  <button role="tab" data-tab="copies" aria-selected="false">Subversion Working Copies Information</button>
+  <button role="tab" data-tab="copies" aria-selected="false">Working Copies</button>
   <button role="tab" data-tab="browser" aria-selected="false" hidden>SVN Repositories</button>
   <button role="tab" data-tab="history" aria-selected="false" hidden>History</button>
   <button role="tab" data-tab="properties" aria-selected="false" hidden>Edit Properties</button>
   <button role="tab" data-tab="conflict" aria-selected="false" hidden>Resolve Conflicts</button>
   <button role="tab" data-tab="updateInfo" aria-selected="false" hidden>Update Info</button>
   <button role="tab" data-tab="output" aria-selected="false" hidden>Console</button>
-  <button id="more" class="overflow icon" aria-label="More Subversion actions" data-icon="more"></button>
+  </div>
+  <button id="more" class="overflow icon" title="More Subversion actions" aria-label="More Subversion actions" aria-haspopup="menu" data-icon="more"></button>
 </nav>
 <div id="status" class="status" role="status">Loading…</div>
 <div id="pending" class="toolbar" hidden>
@@ -250,10 +297,10 @@ dialog textarea { background: var(--surface); }
     <button class="icon" id="update" title="Update Project… (Ctrl+T)" aria-label="Update Project" data-icon="update"></button>
     <button class="icon" id="openCommit" title="Commit Changes… (Ctrl+K)" aria-label="Commit Changes" data-icon="commit"></button>
     <button class="icon" id="revert" title="Revert…" aria-label="Revert" data-icon="revert" disabled></button>
-    <button class="icon" id="showDiff" title="Show Diff (Ctrl+D)" aria-label="Show Diff" data-icon="diff" disabled></button>
+    <button class="icon" id="showDiff" title="Open Diff in Editor (Ctrl+D)" aria-label="Open Diff in Editor" data-icon="diff" disabled></button>
     <button class="icon" id="shelveSelected" title="Shelve Changes…" aria-label="Shelve Changes" data-icon="shelve" disabled></button>
     <button class="icon" id="previewToggle" title="Show Diff Preview" aria-label="Show Diff Preview" data-icon="preview" aria-pressed="true"></button>
-    <button class="icon" id="treeSettings" title="View Options" aria-label="View Options" data-icon="view-options"></button>
+    <button class="icon" id="treeSettings" title="View Options" aria-label="View Options" aria-haspopup="menu" data-icon="view-options"></button>
   </div>
   <div class="change-pane">
     <div class="toolbar" id="filterBar" hidden><input id="filter" class="grow" aria-label="Filter changes" placeholder="Filter changes"></div>
@@ -268,15 +315,15 @@ dialog textarea { background: var(--surface); }
       <button class="icon" id="jumpToSource" title="Jump to Source (F4)" aria-label="Jump to Source" data-icon="edit" disabled></button>
       <span class="separator"></span>
       <button class="icon" id="previousFile" title="Previous File" aria-label="Previous File" data-icon="previous" disabled></button>
-      <button class="link file-count" id="diffFiles" title="Go to File" aria-label="Go to File" disabled>0/0 files</button>
+      <button class="link file-count" id="diffFiles" title="Go to File" aria-label="Go to File" aria-haspopup="menu" disabled>0/0 files</button>
       <button class="icon" id="nextFile" title="Next File" aria-label="Next File" data-icon="next" disabled></button>
       <span class="separator"></span>
       <button class="icon" id="foldDiff" title="Collapse Unchanged Fragments" aria-label="Collapse Unchanged Fragments" data-icon="fold" aria-pressed="true"></button>
       <span class="space"></span>
-      <span id="differenceCount"></span>
+      <span id="differenceCount" aria-live="polite"></span>
       <button class="icon" id="sideBySideDiff" title="Side-by-side Viewer" aria-label="Side-by-side Viewer" data-icon="side-by-side" aria-pressed="true"></button>
       <button class="icon" id="unifiedDiff" title="Unified Viewer" aria-label="Unified Viewer" data-icon="unified" aria-pressed="false"></button>
-      <button class="icon" id="diffSettings" title="Diff Settings" aria-label="Diff Settings" data-icon="settings"></button>
+      <button class="icon" id="diffSettings" title="Diff Settings" aria-label="Diff Settings" aria-haspopup="menu" data-icon="settings"></button>
     </div>
     <div id="localDiff" class="preview-output"><div class="empty">Nothing to show</div></div>
   </div>
@@ -290,7 +337,7 @@ dialog textarea { background: var(--surface); }
     <span>Filter by</span><select data-log="author" aria-label="Filter by author"><option value="">None</option></select>
     <span>Group by</span><select data-log="group" aria-label="Group by"><option value="Date">Date</option><option value="Author">Author</option><option value="None">None</option></select>
     <span class="grow"></span>
-    <label class="commit-search" data-icon="search"><input type="search" data-log="search" aria-label="Search commits"></label>
+    <label class="commit-search" data-icon="search"><input type="search" data-log="search" aria-label="Search commits" placeholder="Search commits"></label>
     <label><input type="checkbox" data-log="regex"> Regex</label>
     <button data-log="older" disabled>Older</button>
   </div>
@@ -322,6 +369,7 @@ dialog textarea { background: var(--surface); }
       <span class="meta" id="shelfFileCount"></span>
       <button class="icon" id="shelfNextFile" aria-label="Next File" title="Next File" data-icon="next" disabled></button>
       <span class="space"></span>
+      <span class="meta" id="shelfDifferenceCount" aria-live="polite"></span>
       <button class="icon" id="shelfUnified" aria-label="Unified Viewer" title="Unified Viewer" data-icon="unified" aria-pressed="true"></button>
       <button class="icon" id="shelfSideBySide" aria-label="Side-by-side Viewer" title="Side-by-side Viewer" data-icon="side-by-side" aria-pressed="false"></button>
     </div>
@@ -334,9 +382,11 @@ dialog textarea { background: var(--surface); }
     <div class="wc-card">
       <strong id="scope"></strong>
       <dl><dt>URL:</dt><dd id="wcUrl"></dd><dt>Depth:</dt><dd id="wcDepth"></dd><dt>Revision:</dt><dd id="wcRevision"></dd></dl>
-      <button id="cleanupCopy" class="link">Cleanup</button>
-      <button id="configureBranches" class="link">Configure Branches</button>
-      <button id="mergeFrom" class="link">Merge From…</button>
+      <div class="toolbar">
+        <button id="cleanupCopy" class="link">Cleanup</button>
+        <button id="configureBranches" class="link">Configure Branches</button>
+        <button id="mergeFrom" class="link">Merge From…</button>
+      </div>
     </div>
   </div>
 </section>
@@ -411,12 +461,13 @@ dialog textarea { background: var(--surface); }
 </main>
 <div id="dialogShade" hidden></div>
 <dialog id="dialog" aria-labelledby="dialogTitle" aria-modal="true"><div id="dialogForm" class="dialog-fields">
-
-<h2 id="dialogTitle"></h2><div id="fields" class="stack"></div>
-  <footer><button id="dialogOk" type="button" class="primary">OK</button><button type="button" id="dialogCancel">Cancel</button></footer>
+  <div class="dialog-title"><h2 id="dialogTitle"></h2><button type="button" class="icon" id="closeDialog" aria-label="Close" title="Close" data-icon="close"></button></div>
+  <div class="dialog-body"><div id="fields" class="stack"></div></div>
+  <footer><button type="button" id="dialogCancel">Cancel</button><button id="dialogOk" type="button" class="primary">OK</button></footer>
 </div></dialog>
 <dialog id="commitDialog" aria-labelledby="commitTitle" aria-modal="true"><div id="commitForm" class="dialog-fields">
   <div class="dialog-title"><h2 id="commitTitle">Commit Changes</h2><button type="button" class="icon" id="closeCommit" aria-label="Close" data-icon="close"></button></div>
+  <div class="dialog-body commit-body">
   <div class="commit-grid">
     <div class="commit-selection">
       <div class="toolbar"><button type="button" class="icon" id="shelveShowDiff" title="Show Diff" aria-label="Show Diff" data-icon="diff" hidden></button>
@@ -428,15 +479,18 @@ dialog textarea { background: var(--surface); }
         <span class="grow"></span><label for="commitGroup">Changelist:</label><select id="commitGroup"></select></div>
       <div id="commitTree" class="list changes-tree"></div>
       <div id="shelveCounts" class="meta" hidden></div>
-      <label for="note">Commit Message</label><textarea id="note" required></textarea>
     </div>
-    <div class="commit-options"><div id="commitError" role="alert"></div><fieldset id="commitSvnOptions"><legend>Subversion</legend>
-      <label><input type="checkbox" id="autoUpdate"> Auto-update after commit</label>
-      <label><input type="checkbox" id="keepLocked"> Keep files locked</label>
-    </fieldset></div>
+    <div class="commit-message">
+      <label for="note" id="commitNoteLabel">Commit Message</label><textarea id="note" required></textarea>
+      <fieldset id="commitSvnOptions" class="commit-options" aria-label="Commit options">
+        <label><input type="checkbox" id="autoUpdate"> Auto-update after commit</label>
+        <label><input type="checkbox" id="keepLocked"> Keep files locked</label>
+      </fieldset>
+    </div>
   </div>
-  <div id="commitDiff"><label>Diff</label>
-    <div id="shelveDiffToolbar" class="toolbar diff-tools" aria-label="Shelve diff toolbar" hidden>
+  <div id="commitError" role="alert" hidden></div>
+  <div id="commitDiff">
+    <div id="shelveDiffToolbar" class="toolbar diff-tools" aria-label="Diff toolbar">
       <button type="button" class="icon" id="shelvePreviousDifference" title="Previous Difference" aria-label="Previous Difference" data-icon="up" disabled></button>
       <button type="button" class="icon" id="shelveNextDifference" title="Next Difference" aria-label="Next Difference" data-icon="down" disabled></button>
       <span class="separator"></span>
@@ -446,14 +500,16 @@ dialog textarea { background: var(--surface); }
       <span class="space"></span><span id="shelveDifferenceCount" class="meta"></span>
       <button type="button" class="icon" id="shelveSideBySide" title="Side-by-side Viewer" aria-label="Side-by-side Viewer" data-icon="side-by-side" aria-pressed="true"></button>
       <button type="button" class="icon" id="shelveUnified" title="Unified Viewer" aria-label="Unified Viewer" data-icon="unified" aria-pressed="false"></button>
-      <button type="button" class="icon" id="shelveDiffSettings" title="Diff Settings" aria-label="Diff Settings" data-icon="settings"></button>
+      <button type="button" class="icon" id="shelveDiffSettings" title="Diff Settings" aria-label="Diff Settings" aria-haspopup="menu" data-icon="settings"></button>
     </div>
     <div class="preview-output" id="commitPreview"><div class="empty">Nothing to show</div></div>
   </div>
-  <footer><button id="commit" class="primary" type="button">Commit</button><button type="button" id="cancelCommit">Cancel</button></footer>
+  </div>
+  <footer><span id="commitSelectionCount" class="grow" aria-live="polite"></span><button type="button" id="cancelCommit">Cancel</button><button id="commit" class="primary" type="button">Commit</button></footer>
 </div></dialog>
 <dialog id="unshelveDialog" aria-labelledby="unshelveTitle" aria-modal="true"><div class="dialog-fields">
   <div class="dialog-title"><h2 id="unshelveTitle">Unshelve Changes</h2><button class="icon" id="closeUnshelve" aria-label="Close" data-icon="close"></button></div>
+  <div class="dialog-body">
   <div class="toolbar">
     <button class="icon" id="unshelveDiff" title="Show Diff" aria-label="Show Diff" data-icon="diff" disabled></button>
     <button class="icon" id="unshelveGroupBy" title="Group by Directory" aria-label="Group by Directory" data-icon="folder" aria-pressed="true"></button>
@@ -464,9 +520,13 @@ dialog textarea { background: var(--surface); }
   <div id="unshelveTree" class="list changes-tree" aria-label="Files to unshelve"></div>
   <label class="shelf-form-row">Name:<input id="unshelveGroup" list="unshelveGroups" maxlength="128"><datalist id="unshelveGroups"></datalist></label>
   <label class="shelf-form-row">Comment:<textarea id="unshelveComment" rows="2"></textarea></label>
-  <div class="toolbar"><label><input type="checkbox" id="unshelveSetActive"> Set active</label></div>
+  <div class="shelf-options">
+    <label><input type="checkbox" id="unshelveSetActive"> Set active</label>
+    <label><input type="checkbox" id="removeApplied"> Remove successfully applied files from the shelf</label>
+  </div>
   <div id="unshelveError" role="alert"></div>
-  <footer><label><input type="checkbox" id="removeApplied"> Remove successfully applied files from the shelf</label><span class="grow"></span><button type="button" id="applyUnshelve" class="primary">Unshelve Changes</button><button type="button" id="cancelUnshelve">Cancel</button></footer>
+  </div>
+  <footer><button type="button" id="cancelUnshelve">Cancel</button><button type="button" id="applyUnshelve" class="primary">Unshelve Changes</button></footer>
 </div></dialog>
 <div id="menu" class="action-menu" role="menu" hidden></div>
 <div id="submenu" class="action-menu" role="menu" hidden></div>

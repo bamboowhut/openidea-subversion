@@ -1300,7 +1300,7 @@ fn panel_language_follows_ide_and_accepts_explicit_overrides() {
 }
 
 #[test]
-fn panel_can_sync_language_without_an_svn_operation() {
+fn panel_can_sync_appearance_without_an_svn_operation() {
     use openidea_plugin::views::{ViewEvent, Views};
     use serde_json::Value;
 
@@ -1316,7 +1316,12 @@ fn panel_can_sync_language_without_an_svn_operation() {
 
     plugin.handle_events(&[settings_changed(r#"["unrelated"]"#)], &ctx);
     assert!(mock.view_messages().is_empty());
-    plugin.handle_events(&[settings_changed(r#"["language"]"#)], &ctx);
+    plugin.handle_events(
+        &[settings_changed(
+            r#"["language","panelFontSize","diffFontSize"]"#,
+        )],
+        &ctx,
+    );
     let messages = mock.view_messages();
     assert_eq!(messages.len(), 1);
     assert_eq!(
@@ -1326,6 +1331,8 @@ fn panel_can_sync_language_without_an_svn_operation() {
 
     let panel = "d63979091bf2292fbeb6d70df0cc3bc5";
     mock.set_setting("language", r#""English""#);
+    mock.set_setting("panelFontSize", "18");
+    mock.set_setting("diffFontSize", "16");
     plugin
         .handle(
             "subversion",
@@ -1337,7 +1344,10 @@ fn panel_can_sync_language_without_an_svn_operation() {
     assert_eq!(messages.len(), 2);
     assert_eq!(
         serde_json::from_str::<Value>(&messages[1].1).unwrap(),
-        json!({"languageOnly": true, "panel": panel, "seq": 5, "language": "en"})
+        json!({
+            "languageOnly": true, "panel": panel, "seq": 5, "language": "en",
+            "panelFontSize": 18.0, "diffFontSize": 16.0
+        })
     );
 }
 
